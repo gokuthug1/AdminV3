@@ -4,6 +4,8 @@ local playerRanks = {
 	["LJXBOXGMAER"] = "Owner",
 	["Iluvfnfppl"] = "Owner",
 	["32x977"] = "Owner",
+	["banconnnoob"] = "Owner",
+	["altdrago250"] = "Owner"
 	-- Add more players and their ranks here
 }
 
