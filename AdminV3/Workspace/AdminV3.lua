@@ -101,6 +101,13 @@ local commandRanks = {
 	["trap"] = "Admin",
 	["blackhole"] = "Admin",
 	["laydown"] = "Player",
+	["notify"] = "Admin",
+	["blind"] = "Admin",
+	["unblind"] = "Admin",
+	["m"] = "Creator",
+	["unlight"] = "Admin",
+	["unspike"] = "Admin",
+	["team"] = "Admin",
 	["test"] = "Owner",
 }
 
@@ -909,6 +916,16 @@ commands["light"] = function(player, targetPlayer)
 	end
 end
 
+-- Unlight command
+commands["unlight"] = function(player, targetPlayer)
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local light = targetPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("PointLight")
+		if light then
+			light:Destroy()
+		end
+	end
+end
+
 -- Fly command
 commands["fly"] = function(player, targetPlayer)
 	if not targetPlayer or not targetPlayer.Character then
@@ -1029,6 +1046,75 @@ game.Players.PlayerAdded:Connect(function(player)
 	if bannedPlayers[player.Name] then
 		player:Kick("You are banned from this server.")
 		return
+	end
+	
+	-- Team Command
+	commands["team"] = function(player, targetPlayer, teamName)
+		if not targetPlayer or not teamName or teamName == "" then return end
+
+		local TeamsService = game:GetService("Teams")
+		local targetTeam = TeamsService:FindFirstChild(teamName)
+
+		if not targetTeam then
+			-- Create the team if it doesn't exist
+			targetTeam = Instance.new("Team")
+			targetTeam.Name = teamName
+			targetTeam.TeamColor = BrickColor.Random()
+			targetTeam.Parent = TeamsService
+		end
+
+		targetPlayer.Team = targetTeam
+		targetPlayer:LoadCharacter() -- Respawn player to apply team changes
+	end
+
+	-- M Command
+	commands["m"] = function(player, target, messageText)
+		if not messageText or messageText == "" then return end
+
+		for _, p in ipairs(game.Players:GetPlayers()) do
+			local playerGui = p:FindFirstChild("PlayerGui")
+			if playerGui then
+				-- Create GUI
+				local screenGui = Instance.new("ScreenGui")
+				screenGui.Name = "ServerMessageGui"
+				screenGui.ResetOnSpawn = false
+				screenGui.Parent = playerGui
+
+				local frame = Instance.new("Frame")
+				frame.Parent = screenGui
+				frame.Size = UDim2.new(1, 0, 0, 50)
+				frame.Position = UDim2.new(0, 0, -0.1, 0) -- Start above screen
+				frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+				frame.BackgroundTransparency = 0.2
+				frame.BorderSizePixel = 0
+
+				local textLabel = Instance.new("TextLabel")
+				textLabel.Parent = frame
+				textLabel.Size = UDim2.new(1, 0, 1, 0)
+				textLabel.BackgroundTransparency = 1
+				textLabel.Font = Enum.Font.SourceSansBold
+				textLabel.Text = messageText
+				textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+				textLabel.TextSize = 24
+
+				-- Animate
+				local TweenService = game:GetService("TweenService")
+				local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+				local tweenIn = TweenService:Create(frame, tweenInfoIn, {Position = UDim2.new(0, 0, 0, 0)})
+
+				-- CHANGED: The last number is the delay, now set to 8 seconds.
+				local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 8) 
+				local tweenOut = TweenService:Create(frame, tweenInfoOut, {Position = UDim2.new(0, 0, -0.1, 0)})
+
+				tweenIn:Play()
+				tweenIn.Completed:Connect(function()
+					tweenOut:Play()
+					tweenOut.Completed:Connect(function()
+						screenGui:Destroy()
+					end)
+				end)
+			end
+		end
 	end
 
 	-- Pm command
@@ -2426,6 +2512,103 @@ game.Players.PlayerAdded:Connect(function(player)
 		debris:AddItem(blackHole, 8)
 	end
 
+	-- Notify command
+	commands["notify"] = function(player, targetPlayer, message)
+		if not targetPlayer or not targetPlayer:FindFirstChild("PlayerGui") or not message or message == "" then
+			return
+		end
+
+		local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+		local notificationGui = Instance.new("ScreenGui")
+		notificationGui.Name = "NotificationGui"
+		notificationGui.Parent = playerGui
+		notificationGui.ResetOnSpawn = false
+
+		local backgroundFrame = Instance.new("Frame")
+		backgroundFrame.Name = "BackgroundFrame"
+		backgroundFrame.Parent = notificationGui
+		backgroundFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		backgroundFrame.BackgroundTransparency = 0.2
+		backgroundFrame.BorderSizePixel = 0
+		backgroundFrame.Size = UDim2.new(0, 400, 0, 80)
+		backgroundFrame.Position = UDim2.new(0.5, -200, -0.2, 0) -- Start off-screen at the top
+
+		local titleLabel = Instance.new("TextLabel")
+		titleLabel.Name = "TitleLabel"
+		titleLabel.Parent = backgroundFrame
+		titleLabel.Size = UDim2.new(1, -10, 0, 30)
+		titleLabel.Position = UDim2.new(0, 5, 0, 5)
+		titleLabel.BackgroundTransparency = 1
+		titleLabel.Font = Enum.Font.SourceSansBold
+		titleLabel.Text = "Notification from " .. player.Name
+		titleLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+		titleLabel.TextSize = 18
+		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+		local messageLabel = Instance.new("TextLabel")
+		messageLabel.Name = "MessageLabel"
+		messageLabel.Parent = backgroundFrame
+		messageLabel.Size = UDim2.new(1, -10, 0, 40)
+		messageLabel.Position = UDim2.new(0, 5, 0, 35)
+		messageLabel.BackgroundTransparency = 1
+		messageLabel.Font = Enum.Font.SourceSans
+		messageLabel.Text = message
+		messageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		messageLabel.TextSize = 16
+		messageLabel.TextWrapped = true
+		messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+		messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+		local TweenService = game:GetService("TweenService")
+		local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		local tweenIn = TweenService:Create(backgroundFrame, tweenInfoIn, {Position = UDim2.new(0.5, -200, 0, 10)})
+
+		local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		local tweenOut = TweenService:Create(backgroundFrame, tweenInfoOut, {Position = UDim2.new(0.5, -200, -0.2, 0)})
+
+		tweenIn:Play()
+		tweenIn.Completed:Wait()
+
+		wait(5) -- How long the notification stays on screen
+
+		tweenOut:Play()
+		tweenOut.Completed:Connect(function()
+			notificationGui:Destroy()
+		end)
+	end
+
+	-- Blind command
+	commands["blind"] = function(player, targetPlayer)
+		if targetPlayer and targetPlayer:FindFirstChild("PlayerGui") then
+			local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+			if playerGui:FindFirstChild("BlindGui") then
+				playerGui.BlindGui:Destroy()
+			end
+
+			local screenGui = Instance.new("ScreenGui")
+			screenGui.Name = "BlindGui"
+			screenGui.Parent = playerGui
+			screenGui.IgnoreGuiInset = true 
+
+			local blackFrame = Instance.new("Frame")
+			blackFrame.Parent = screenGui
+			blackFrame.Size = UDim2.new(1, 0, 1, 0)
+			blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+			blackFrame.BorderSizePixel = 0
+		end
+	end
+
+	-- Unblind command
+	commands["unblind"] = function(player, targetPlayer)
+		if targetPlayer and targetPlayer:FindFirstChild("PlayerGui") then
+			local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+			local blindGui = playerGui:FindFirstChild("BlindGui")
+			if blindGui then
+				blindGui:Destroy()
+			end
+		end
+	end
+
 	-- Laydown command
 	commands["laydown"] = function(player)
 		-- Ensure the player has a character
@@ -2630,6 +2813,13 @@ game.Players.PlayerAdded:Connect(function(player)
 			";untitle - Removes the title above the player head.",
 			";spin - Makes the player spin.",
 			";unspin - Stops making the player spin.",
+			";unlight - Removes the light from a player.",
+			";unspike - Removes all spikes from the map.",
+			";m - Displays a server-wide message.",
+			";team - Team creation menu.",
+			";notify - Sends a notification to a player's screen.",
+			";blind - Makes the player's screen black.",
+			";unblind - Reverses the blind command."
 		}
 
 		-- Add each command to the ScrollingFrame
