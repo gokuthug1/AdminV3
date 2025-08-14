@@ -101,6 +101,13 @@ local commandRanks = {
 	["trap"] = "Admin",
 	["blackhole"] = "Admin",
 	["laydown"] = "Player",
+	["unlight"] = "Admin",
+	["unspike"] = "Admin",
+	["m"] = "Creator",
+	["team"] = "Admin",
+	["notify"] = "Admin",
+	["blind"] = "Admin",
+	["unblind"] = "Admin",
 	["test"] = "Creator",
 }
 
@@ -820,7 +827,7 @@ commands["ls"] = function(player, targetPlayer)
 end
 
 -- Erain command
-commands["erain"] = function(player)
+commands["erain"] = function(player, target, message)
 	for i = 1, 10 do
 		local barrel = Instance.new("Part")
 		barrel.Size = Vector3.new(2, 2, 2)
@@ -900,10 +907,24 @@ end
 -- Light command
 commands["light"] = function(player, targetPlayer)
 	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		-- Remove old light if it exists
+		local oldLight = targetPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("PointLight")
+		if oldLight then oldLight:Destroy() end
+
 		local light = Instance.new("PointLight")
 		light.Parent = targetPlayer.Character.HumanoidRootPart
 		light.Range = 10 -- Adjust the range of the light as needed
 		light.Brightness = 4 -- Adjust the brightness of the light as needed
+	end
+end
+
+-- Unlight command
+commands["unlight"] = function(player, targetPlayer)
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local light = targetPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("PointLight")
+		if light then
+			light:Destroy()
+		end
 	end
 end
 
@@ -1001,6 +1022,16 @@ commands["spike"] = function(player, targetPlayer)
 	createSpikesAroundPlayer(targetPlayer)
 end
 
+-- Unspike Command
+commands["unspike"] = function(player, target, message)
+	local workspace = game:GetService("Workspace")
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name == "Spike" and obj:IsA("WedgePart") then
+			obj:Destroy()
+		end
+	end
+end
+
 -- Hide Forcefield command
 commands["hff"] = function(player, targetPlayer)
 	if targetPlayer.Character then
@@ -1017,6 +1048,75 @@ commands["ban"] = function(player, targetPlayer)
 	if targetPlayer and playerRanks[targetPlayer.Name] ~= "Creator" then
 		bannedPlayers[targetPlayer.Name] = true
 		targetPlayer:Kick("You have been banned from this server.")
+	end
+end
+
+-- Team Command
+commands["team"] = function(player, targetPlayer, teamName)
+	if not targetPlayer or not teamName or teamName == "" then return end
+
+	local TeamsService = game:GetService("Teams")
+	local targetTeam = TeamsService:FindFirstChild(teamName)
+
+	if not targetTeam then
+		-- Create the team if it doesn't exist
+		targetTeam = Instance.new("Team")
+		targetTeam.Name = teamName
+		targetTeam.TeamColor = BrickColor.Random()
+		targetTeam.Parent = TeamsService
+	end
+
+	targetPlayer.Team = targetTeam
+	targetPlayer:LoadCharacter() -- Respawn player to apply team changes
+end
+
+-- M Command
+commands["m"] = function(player, target, messageText)
+	if not messageText or messageText == "" then return end
+
+	for _, p in ipairs(game.Players:GetPlayers()) do
+		local playerGui = p:FindFirstChild("PlayerGui")
+		if playerGui then
+			-- Create GUI
+			local screenGui = Instance.new("ScreenGui")
+			screenGui.Name = "ServerMessageGui"
+			screenGui.ResetOnSpawn = false
+			screenGui.Parent = playerGui
+
+			local frame = Instance.new("Frame")
+			frame.Parent = screenGui
+			frame.Size = UDim2.new(1, 0, 0, 50)
+			frame.Position = UDim2.new(0, 0, -0.1, 0) -- Start above screen
+			frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+			frame.BackgroundTransparency = 0.2
+			frame.BorderSizePixel = 0
+
+			local textLabel = Instance.new("TextLabel")
+			textLabel.Parent = frame
+			textLabel.Size = UDim2.new(1, 0, 1, 0)
+			textLabel.BackgroundTransparency = 1
+			textLabel.Font = Enum.Font.SourceSansBold
+			textLabel.Text = messageText
+			textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+			textLabel.TextSize = 24
+
+			-- Animate
+			local TweenService = game:GetService("TweenService")
+			local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local tweenIn = TweenService:Create(frame, tweenInfoIn, {Position = UDim2.new(0, 0, 0, 0)})
+
+			-- CHANGED: The last number is the delay, now set to 8 seconds.
+			local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 8) 
+			local tweenOut = TweenService:Create(frame, tweenInfoOut, {Position = UDim2.new(0, 0, -0.1, 0)})
+
+			tweenIn:Play()
+			tweenIn.Completed:Connect(function()
+				tweenOut:Play()
+				tweenOut.Completed:Connect(function()
+					screenGui:Destroy()
+				end)
+			end)
+		end
 	end
 end
 
@@ -1367,7 +1467,7 @@ game.Players.PlayerAdded:Connect(function(player)
 	end
 
 	-- Loadmap command
-	commands["loadmap"] = function(player)
+	commands["loadmap"] = function(player, target, message)
 		-- Check for existing Baseplate and Spawn and remove them if they exist
 		local existingBaseplate = workspace:FindFirstChild("Baseplate")
 		local existingSpawn = workspace:FindFirstChild("Spawn")
@@ -2293,7 +2393,7 @@ game.Players.PlayerAdded:Connect(function(player)
 			end
 		end
 	end
-	
+
 	-- Float command
 	commands["float"] = function(player, targetPlayer)
 		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -2422,6 +2522,103 @@ game.Players.PlayerAdded:Connect(function(player)
 		-- Remove the black hole after 8 seconds
 		debris:AddItem(blackHole, 8)
 	end
+	
+	-- Notify command
+	commands["notify"] = function(player, targetPlayer, message)
+		if not targetPlayer or not targetPlayer:FindFirstChild("PlayerGui") or not message or message == "" then
+			return
+		end
+
+		local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+		local notificationGui = Instance.new("ScreenGui")
+		notificationGui.Name = "NotificationGui"
+		notificationGui.Parent = playerGui
+		notificationGui.ResetOnSpawn = false
+
+		local backgroundFrame = Instance.new("Frame")
+		backgroundFrame.Name = "BackgroundFrame"
+		backgroundFrame.Parent = notificationGui
+		backgroundFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		backgroundFrame.BackgroundTransparency = 0.2
+		backgroundFrame.BorderSizePixel = 0
+		backgroundFrame.Size = UDim2.new(0, 400, 0, 80)
+		backgroundFrame.Position = UDim2.new(0.5, -200, -0.2, 0) -- Start off-screen at the top
+
+		local titleLabel = Instance.new("TextLabel")
+		titleLabel.Name = "TitleLabel"
+		titleLabel.Parent = backgroundFrame
+		titleLabel.Size = UDim2.new(1, -10, 0, 30)
+		titleLabel.Position = UDim2.new(0, 5, 0, 5)
+		titleLabel.BackgroundTransparency = 1
+		titleLabel.Font = Enum.Font.SourceSansBold
+		titleLabel.Text = "Notification from " .. player.Name
+		titleLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+		titleLabel.TextSize = 18
+		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+		local messageLabel = Instance.new("TextLabel")
+		messageLabel.Name = "MessageLabel"
+		messageLabel.Parent = backgroundFrame
+		messageLabel.Size = UDim2.new(1, -10, 0, 40)
+		messageLabel.Position = UDim2.new(0, 5, 0, 35)
+		messageLabel.BackgroundTransparency = 1
+		messageLabel.Font = Enum.Font.SourceSans
+		messageLabel.Text = message
+		messageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		messageLabel.TextSize = 16
+		messageLabel.TextWrapped = true
+		messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+		messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+		local TweenService = game:GetService("TweenService")
+		local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		local tweenIn = TweenService:Create(backgroundFrame, tweenInfoIn, {Position = UDim2.new(0.5, -200, 0, 10)})
+
+		local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		local tweenOut = TweenService:Create(backgroundFrame, tweenInfoOut, {Position = UDim2.new(0.5, -200, -0.2, 0)})
+
+		tweenIn:Play()
+		tweenIn.Completed:Wait()
+
+		wait(5) -- How long the notification stays on screen
+
+		tweenOut:Play()
+		tweenOut.Completed:Connect(function()
+			notificationGui:Destroy()
+		end)
+	end
+
+	-- Blind command
+	commands["blind"] = function(player, targetPlayer)
+		if targetPlayer and targetPlayer:FindFirstChild("PlayerGui") then
+			local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+			if playerGui:FindFirstChild("BlindGui") then
+				playerGui.BlindGui:Destroy()
+			end
+
+			local screenGui = Instance.new("ScreenGui")
+			screenGui.Name = "BlindGui"
+			screenGui.Parent = playerGui
+			screenGui.IgnoreGuiInset = true 
+
+			local blackFrame = Instance.new("Frame")
+			blackFrame.Parent = screenGui
+			blackFrame.Size = UDim2.new(1, 0, 1, 0)
+			blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+			blackFrame.BorderSizePixel = 0
+		end
+	end
+
+	-- Unblind command
+	commands["unblind"] = function(player, targetPlayer)
+		if targetPlayer and targetPlayer:FindFirstChild("PlayerGui") then
+			local playerGui = targetPlayer:FindFirstChild("PlayerGui")
+			local blindGui = playerGui:FindFirstChild("BlindGui")
+			if blindGui then
+				blindGui:Destroy()
+			end
+		end
+	end
 
 	-- Laydown command
 	commands["laydown"] = function(player)
@@ -2469,7 +2666,7 @@ game.Players.PlayerAdded:Connect(function(player)
 	commands["cmds"] = function(player)
 		-- Check if the GUI already exists
 		local playerGui = player:FindFirstChild("PlayerGui")
-		if playerGui:FindFirstChild("CommandsGui") then
+		if playerGui and playerGui:FindFirstChild("CommandsGui") then
 			return -- If it exists, return and do not create another one
 		end
 
@@ -2612,11 +2809,11 @@ game.Players.PlayerAdded:Connect(function(player)
 			";unfire - Removes fire from player.",
 			";shutdown - Shut down the server.",
 			";thin - Makes the player thin.",
-			"unthin - Make the player non thin.",
+			";unthin - Make the player non thin.",
 			";fat - Makes the player fat.",
 			";unfat - Makes u not fat.",
 			";width - Change the player width.",
-			":unwidth - Removes width from player.",
+			";unwidth - Removes width from player.",
 			";height - Change the player height.",
 			";unheight - Removes height cmd from player.",
 			";mute - Prevents the player from chatting.",
@@ -2627,6 +2824,13 @@ game.Players.PlayerAdded:Connect(function(player)
 			";untitle - Removes the title above the player head.",
 			";spin - Makes the player spin.",
 			";unspin - Stops making the player spin.",
+			";unlight - Removes the light from a player.",
+			";unspike - Removes all spikes from the map.",
+			";m - Displays a server-wide message.",
+			";team - Team creation menu.",
+			";notify - Sends a notification to a player's screen.",
+			";blind - Makes the player's screen black.",
+			";unblind - Reverses the blind command."
 		}
 
 		-- Add each command to the ScrollingFrame
@@ -2674,20 +2878,33 @@ local function executeCommand(player, command, targetName, arg1)
 	local requiredRank = commandRanks[command]
 
 	if canExecute(playerRank, requiredRank) then
+		-- Handle global commands that don't need to loop through targets
+		if command == "message" or command == "unspike" or command == "erain" or command == "loadmap" then
+			if commands[command] then
+				-- Reconstruct the full argument since the regex splits it
+				local fullArgument = targetName .. (arg1 and #arg1 > 0 and " " .. arg1 or "")
+				commands[command](player, nil, fullArgument) -- Pass player, nil for target, and the full argument
+			end
+			logCommand(player, command) -- Log once
+			return -- Exit after executing
+		end
+
 		local targets = getPlayerByName(targetName, player)
+		if #targets == 0 then return end -- No targets found
+
 		for _, target in ipairs(targets) do
 			if commands[command] then
 				commands[command](player, target, arg1)
-				logCommand(player, command)
 			end
 		end
+		logCommand(player, command) -- Log once after executing on all targets
 	end
 end
 
 -- Connect to RemoteEvent for command execution
 local executeCommandRemote = game.ReplicatedStorage:WaitForChild("execute")
-executeCommandRemote.OnServerEvent:Connect(function(player, command)
-	local command, targetName, arg1 = command:match("^;(%w+)%s*(%w*)%s*(.*)")
+executeCommandRemote.OnServerEvent:Connect(function(player, message)
+	local command, targetName, arg1 = message:match("^;(%w+)%s*(%w*)%s*(.*)")
 
 	if command and commands[command] then
 		executeCommand(player, command, targetName, arg1)
