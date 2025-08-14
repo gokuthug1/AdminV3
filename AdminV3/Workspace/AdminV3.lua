@@ -1,6 +1,6 @@
 -- Define player ranks
 local playerRanks = {
-	["gokuthug1"] = "Creator",
+	["gokuthug0"] = "Creator",
 	["LJXBOXGMAER"] = "Owner",
 	["Iluvfnfppl"] = "Owner",
 	["32x977"] = "Owner",
@@ -101,7 +101,7 @@ local commandRanks = {
 	["trap"] = "Admin",
 	["blackhole"] = "Admin",
 	["laydown"] = "Player",
-	["test"] = "Creator",
+	["test"] = "Owner",
 }
 
 -- Define rank hierarchy
@@ -917,7 +917,7 @@ commands["fly"] = function(player, targetPlayer)
 
 	-- Ensure the Fly RemoteEvent exists in ReplicatedStorage
 	local replicatedStorage = game:GetService("ReplicatedStorage")
-	local flyEvent = replicatedStorage:FindFirstChild("Fly")
+	local flyEvent = replicatedStorage:FindFirstChild("fly")
 
 	if flyEvent then
 		-- Fire the remote event to the target player's client to enable flying
@@ -933,7 +933,7 @@ commands["unfly"] = function(player, targetPlayer)
 
 	-- Ensure the Fly RemoteEvent exists in ReplicatedStorage
 	local replicatedStorage = game:GetService("ReplicatedStorage")
-	local flyEvent = replicatedStorage:FindFirstChild("Fly")
+	local flyEvent = replicatedStorage:FindFirstChild("fly")
 
 	if flyEvent then
 		-- Fire the remote event to the target player's client to disable flying
@@ -2630,12 +2630,6 @@ game.Players.PlayerAdded:Connect(function(player)
 			";untitle - Removes the title above the player head.",
 			";spin - Makes the player spin.",
 			";unspin - Stops making the player spin.",
-			";npc - Spawns in a npc next to u.",
-			";blackhole - Spawns a blackhole appear near the player.",
-			";float - Makes the player float.",
-			";flashbang - Makes the player blinded by a flashbang.",
-			";trap - Spawns a trap beneath the player.",
-			";laydown - Makes u laydown.",
 		}
 
 		-- Add each command to the ScrollingFrame
